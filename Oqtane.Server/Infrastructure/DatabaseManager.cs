@@ -386,6 +386,16 @@ namespace Oqtane.Infrastructure
 
                 using (var db = GetInstallationContext())
                 {
+                    foreach (var t in db.Tenant.ToList())
+                    {
+                        if (!string.IsNullOrEmpty(t.DBType) && t.DBType.Contains(", Oqtane.Database."))
+                        {
+                            var updated = t.DBType.Substring(0, t.DBType.IndexOf(", ")) + ", Oqtane.Server";
+                            t.DBType = updated;
+                            db.Entry(t).State = EntityState.Modified;
+                        }
+                    }
+                    db.SaveChanges();
                     foreach (var tenant in db.Tenant.ToList())
                     {
                         tenantManager.SetTenant(tenant.TenantId);
@@ -679,8 +689,25 @@ namespace Oqtane.Infrastructure
             Databases.Interfaces.IDatabase database = null;
             if (!string.IsNullOrEmpty(databaseType))
             {
-                var type = Type.GetType(databaseType);
-                database = Activator.CreateInstance(type) as Oqtane.Databases.Interfaces.IDatabase;
+                var typeName = databaseType?.Trim();
+                Type type = null;
+                if (!string.IsNullOrEmpty(typeName))
+                {
+                    type = Type.GetType(typeName);
+                    if (type == null)
+                    {
+                        var fullName = typeName.Split(',')[0].Trim();
+                        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            type = asm.GetType(fullName);
+                            if (type != null) break;
+                        }
+                    }
+                }
+                if (type != null)
+                {
+                    database = Activator.CreateInstance(type) as Oqtane.Databases.Interfaces.IDatabase;
+                }
             }
 
             return new InstallationContext(database, connectionString);
