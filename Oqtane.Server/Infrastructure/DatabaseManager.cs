@@ -388,10 +388,32 @@ namespace Oqtane.Infrastructure
                 {
                     foreach (var t in db.Tenant.ToList())
                     {
+                        // Normalize legacy or missing DBType values to ensure provider resolution
+                        if (string.IsNullOrEmpty(t.DBType))
+                        {
+                            var cfgType = _config.GetSection(SettingKeys.DatabaseSection)[SettingKeys.DatabaseTypeKey];
+                            if (!string.IsNullOrEmpty(cfgType))
+                            {
+                                t.DBType = cfgType.Trim();
+                                db.Entry(t).State = EntityState.Modified;
+                            }
+                            else
+                            {
+                                // If config did not specify a type, use a sane default (PostgreSQL) to unblock
+                                t.DBType = "Oqtane.Database.PostgreSQL.PostgreSQLDatabase, Oqtane.Server";
+                                db.Entry(t).State = EntityState.Modified;
+                            }
+                        }
                         if (!string.IsNullOrEmpty(t.DBType) && t.DBType.Contains(", Oqtane.Database."))
                         {
                             var updated = t.DBType.Substring(0, t.DBType.IndexOf(", ")) + ", Oqtane.Server";
                             t.DBType = updated;
+                            db.Entry(t).State = EntityState.Modified;
+                        }
+                        // Ensure Master tenant has a resolvable DBType
+                        if (t.Name == TenantNames.Master && string.IsNullOrEmpty(t.DBType))
+                        {
+                            t.DBType = "Oqtane.Database.PostgreSQL.PostgreSQLDatabase, Oqtane.Server";
                             db.Entry(t).State = EntityState.Modified;
                         }
                     }
@@ -685,6 +707,19 @@ namespace Oqtane.Infrastructure
         {
             var connectionString = NormalizeConnectionString(_config.GetConnectionString(SettingKeys.ConnectionStringKey));
             var databaseType = _config.GetSection(SettingKeys.DatabaseSection)[SettingKeys.DatabaseTypeKey];
+            if (string.IsNullOrEmpty(databaseType))
+            {
+                // fallback to explicit DatabaseType from appsettings or DefaultDBType
+                databaseType = _config.GetSection(SettingKeys.DatabaseSection)["DatabaseType"];
+                if (string.IsNullOrEmpty(databaseType))
+                {
+                    databaseType = _config.GetSection(SettingKeys.DatabaseSection)["DefaultDBType"];
+                }
+            }
+            if (!string.IsNullOrEmpty(databaseType) && databaseType.Contains(", Oqtane.Database."))
+            {
+                databaseType = databaseType.Substring(0, databaseType.IndexOf(", ")) + ", Oqtane.Server";
+            }
 
             Databases.Interfaces.IDatabase database = null;
             if (!string.IsNullOrEmpty(databaseType))
@@ -701,6 +736,15 @@ namespace Oqtane.Infrastructure
                         {
                             type = asm.GetType(fullName);
                             if (type != null) break;
+                        }
+                        if (type == null)
+                        {
+                            try
+                            {
+                                var serverAsm = Assembly.Load("Oqtane.Server");
+                                type = serverAsm.GetType(fullName);
+                            }
+                            catch { }
                         }
                     }
                 }
@@ -787,7 +831,15 @@ namespace Oqtane.Infrastructure
             var defaultDatabaseType = _configManager.GetSetting(SettingKeys.DatabaseSection, SettingKeys.DatabaseTypeKey, "");
             if (defaultDatabaseType == "")
             {
-                _configManager.AddOrUpdateSetting($"{SettingKeys.DatabaseSection}:{SettingKeys.DatabaseTypeKey}", Constants.DefaultDBType, true);
+                // prefer explicit DatabaseType from appsettings if provided; else fall back to DefaultDBType constant
+                var configured = _config.GetSection(SettingKeys.DatabaseSection)[SettingKeys.DatabaseTypeKey];
+                if (string.IsNullOrEmpty(configured))
+                {
+                    // some configs use DefaultDBType; honor it if present in appsettings
+                    var defFromApp = _config.GetSection(SettingKeys.DatabaseSection)["DefaultDBType"];
+                    configured = string.IsNullOrEmpty(defFromApp) ? Constants.DefaultDBType : defFromApp;
+                }
+                _configManager.AddOrUpdateSetting($"{SettingKeys.DatabaseSection}:{SettingKeys.DatabaseTypeKey}", configured, true);
             }
             if (defaultDatabaseType.Contains(", Oqtane.Database."))
             {
