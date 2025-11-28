@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsClientProject>true</IsClientProject>
+    <IsThemeClientProject>true</IsThemeClientProject>
     <ServerDllName>Oqtane.Themes.FullscreenTheme</ServerDllName>
     <AssetUrlPrefix>/themes/Oqtane.Themes.FullscreenTheme</AssetUrlPrefix>
   </PropertyGroup>

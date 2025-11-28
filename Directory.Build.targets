@@ -64,9 +64,9 @@ $(_ModuloClientAssetLines)
              Condition="'@(_ReferencedAssetManifests)'!=''" />
   </Target>
 
-  <!-- Target to deploy module/theme Server DLLs and manifests to Oqtane.Server -->
+  <!-- Target to deploy module Server DLLs and manifests to Oqtane.Server -->
   <Target Name="ModuloDeployToOqtaneServer" AfterTargets="Build"
-          Condition="'$(IsModuleServerProject)'=='true' or '$(IsThemeServerProject)'=='true'">
+          Condition="'$(IsModuleServerProject)'=='true'">
     
     <PropertyGroup>
       <!-- Calculate path to Oqtane.Server bin directory -->
@@ -77,14 +77,13 @@ $(_ModuloClientAssetLines)
     </PropertyGroup>
 
     <!-- Debug output -->
-    <Message Text="ModuloDeployToOqtaneServer: Deploying $(AssemblyName) to $(_OqtaneServerBin)" Importance="high" />
+    <Message Text="ModuloDeployToOqtaneServer: Deploying module $(AssemblyName) to $(_OqtaneServerBin)" Importance="high" />
 
     <ItemGroup>
       <!-- Find Server DLL in current output -->
       <_ServerDllToDeploy Include="$(OutputPath)$(AssemblyName).dll" />
       <!-- Find Client DLL in current output (copied from referenced Client project) -->
-      <_ClientDllToDeploy Include="$(OutputPath)$(AssemblyName.Replace('.Server', '.Client')).dll" 
-                          Condition="'$(IsModuleServerProject)'=='true' or '$(IsThemeServerProject)'=='true'" />
+      <_ClientDllToDeploy Include="$(OutputPath)$(AssemblyName.Replace('.Server', '.Client')).dll" />
       <!-- Find manifest files in Client project output -->
       <_ManifestToDeploy Include="$(_ClientOutputPath)*.assets.json" />
     </ItemGroup>
@@ -110,7 +109,51 @@ $(_ModuloClientAssetLines)
           SkipUnchangedFiles="true"
           Condition="'@(_ManifestToDeploy)'!='' and Exists('$(_OqtaneServerBin)')" />
 
-    <Message Text="Deployed module/theme to Oqtane.Server: $(AssemblyName)" 
+    <Message Text="Deployed module to Oqtane.Server: $(AssemblyName)" 
+             Importance="high" 
+             Condition="Exists('$(_OqtaneServerBin)')" />
+  </Target>
+
+  <!-- Target to deploy theme Client DLLs and manifests to Oqtane.Server -->
+  <!-- Themes don't have Server projects, only Client projects -->
+  <Target Name="ModuloDeployThemeToOqtaneServer" AfterTargets="Build"
+          Condition="'$(IsThemeClientProject)'=='true'">
+    
+    <PropertyGroup>
+      <!-- Calculate path to Oqtane.Server bin directory -->
+      <!-- For themes, Client is typically in ThemeName/Client, so go up 2 levels -->
+      <_RepoRoot>$(MSBuildProjectDirectory)/../..</_RepoRoot>
+      <_OqtaneServerBin>$([System.IO.Path]::GetFullPath('$(_RepoRoot)/Oqtane.Server/bin/$(Configuration)/$(TargetFramework)'))</_OqtaneServerBin>
+    </PropertyGroup>
+
+    <!-- Debug output -->
+    <Message Text="ModuloDeployThemeToOqtaneServer: Deploying theme $(AssemblyName) to $(_OqtaneServerBin)" Importance="high" />
+    <Message Text="  Theme repo root: $(_RepoRoot)" Importance="high" />
+    <Message Text="  Target bin: $(_OqtaneServerBin)" Importance="high" />
+
+    <ItemGroup>
+      <!-- Find Client DLL in current output -->
+      <_ThemeClientDllToDeploy Include="$(OutputPath)$(AssemblyName).dll" />
+      <!-- Find manifest files in current output -->
+      <_ThemeManifestToDeploy Include="$(OutputPath)*.assets.json" />
+    </ItemGroup>
+
+    <!-- Create Oqtane.Server bin directory if it doesn't exist -->
+    <MakeDir Directories="$(_OqtaneServerBin)" Condition="!Exists('$(_OqtaneServerBin)')" />
+
+    <!-- Copy Client DLL to Oqtane.Server bin -->
+    <Copy SourceFiles="@(_ThemeClientDllToDeploy)"
+          DestinationFolder="$(_OqtaneServerBin)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ThemeClientDllToDeploy)'!='' and Exists('$(_OqtaneServerBin)')" />
+
+    <!-- Copy manifest files to Oqtane.Server bin -->
+    <Copy SourceFiles="@(_ThemeManifestToDeploy)"
+          DestinationFolder="$(_OqtaneServerBin)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ThemeManifestToDeploy)'!='' and Exists('$(_OqtaneServerBin)')" />
+
+    <Message Text="Deployed theme to Oqtane.Server: $(AssemblyName)" 
              Importance="high" 
              Condition="Exists('$(_OqtaneServerBin)')" />
   </Target>
