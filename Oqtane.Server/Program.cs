@@ -84,6 +84,7 @@ namespace Oqtane.Server
             var contentTypeProvider = new FileExtensionContentTypeProvider();
             app.Use(async (context, next) =>
             {
+                // Strip query string from path for lookup
                 var path = context.Request.Path.Value;
                 if (path != null && assetMap.TryGetValue(path, out var filePath))
                 {
@@ -92,11 +93,9 @@ namespace Oqtane.Server
                         context.Response.ContentType = contentType;
                     }
                     await context.Response.SendFileAsync(filePath);
+                    return;
                 }
-                else
-                {
-                    await next();
-                }
+                await next();
             });
 
             var databaseManager = app.Services.GetService<IDatabaseManager>();

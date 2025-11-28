@@ -64,4 +64,55 @@ $(_ModuloClientAssetLines)
              Condition="'@(_ReferencedAssetManifests)'!=''" />
   </Target>
 
+  <!-- Target to deploy module/theme Server DLLs and manifests to Oqtane.Server -->
+  <Target Name="ModuloDeployToOqtaneServer" AfterTargets="Build"
+          Condition="'$(IsModuleServerProject)'=='true' or '$(IsThemeServerProject)'=='true'">
+    
+    <PropertyGroup>
+      <!-- Calculate path to Oqtane.Server bin directory -->
+      <_RepoRoot>$(MSBuildProjectDirectory)/../..</_RepoRoot>
+      <_OqtaneServerBin>$([System.IO.Path]::GetFullPath('$(_RepoRoot)/Oqtane.Server/bin/$(Configuration)/$(TargetFramework)'))</_OqtaneServerBin>
+      <!-- Client project output directory -->
+      <_ClientOutputPath>$(MSBuildProjectDirectory)/../Client/bin/$(Configuration)/$(TargetFramework)/</_ClientOutputPath>
+    </PropertyGroup>
+
+    <!-- Debug output -->
+    <Message Text="ModuloDeployToOqtaneServer: Deploying $(AssemblyName) to $(_OqtaneServerBin)" Importance="high" />
+
+    <ItemGroup>
+      <!-- Find Server DLL in current output -->
+      <_ServerDllToDeploy Include="$(OutputPath)$(AssemblyName).dll" />
+      <!-- Find Client DLL in current output (copied from referenced Client project) -->
+      <_ClientDllToDeploy Include="$(OutputPath)$(AssemblyName.Replace('.Server', '.Client')).dll" Condition="'$(IsModuleServerProject)'=='true'" />
+      <_ClientDllToDeploy Include="$(OutputPath)$(AssemblyName.Replace('.Server', '.Client')).dll" Condition="'$(IsThemeServerProject)'=='true'" />
+      <!-- Find manifest files in Client project output -->
+      <_ManifestToDeploy Include="$(_ClientOutputPath)*.assets.json" />
+    </ItemGroup>
+
+    <!-- Create Oqtane.Server bin directory if it doesn't exist -->
+    <MakeDir Directories="$(_OqtaneServerBin)" Condition="!Exists('$(_OqtaneServerBin)')" />
+
+    <!-- Copy Server DLL to Oqtane.Server bin -->
+    <Copy SourceFiles="@(_ServerDllToDeploy)"
+          DestinationFolder="$(_OqtaneServerBin)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ServerDllToDeploy)'!='' and Exists('$(_OqtaneServerBin)')" />
+
+    <!-- Copy Client DLL to Oqtane.Server bin -->
+    <Copy SourceFiles="@(_ClientDllToDeploy)"
+          DestinationFolder="$(_OqtaneServerBin)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ClientDllToDeploy)'!='' and Exists('$(_OqtaneServerBin)')" />
+
+    <!-- Copy manifest files to Oqtane.Server bin -->
+    <Copy SourceFiles="@(_ManifestToDeploy)"
+          DestinationFolder="$(_OqtaneServerBin)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ManifestToDeploy)'!='' and Exists('$(_OqtaneServerBin)')" />
+
+    <Message Text="Deployed module/theme to Oqtane.Server: $(AssemblyName)" 
+             Importance="high" 
+             Condition="Exists('$(_OqtaneServerBin)')" />
+  </Target>
+
 </Project>
