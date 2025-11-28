@@ -1,0 +1,32 @@
+/* AgentHub Module CSS */
+.agenthub-container {
+    padding: 20px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 10px;
+    color: white;
+    margin: 20px 0;
+}
+
+.agenthub-container h2 {
+    margin-top: 0;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.agenthub-container ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.agenthub-container li {
+    padding: 5px 0;
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.2);
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.agenthub-container .btn {
+    margin-top: 10px;
+}

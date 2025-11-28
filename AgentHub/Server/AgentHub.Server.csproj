@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>AgentHub.Server</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Oqtane.Shared\Oqtane.Shared.csproj" />
+    <ProjectReference Include="..\Client\AgentHub.Client.csproj" />
+  </ItemGroup>
+
+</Project>

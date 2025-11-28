@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsClientProject>true</IsClientProject>
+    <ServerDllName>Oqtane.Themes.FullscreenTheme</ServerDllName>
+    <AssetUrlPrefix>/themes/Oqtane.Themes.FullscreenTheme</AssetUrlPrefix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Oqtane.Client\Oqtane.Client.csproj" />
+  </ItemGroup>
+
+</Project>

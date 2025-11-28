@@ -1,0 +1,67 @@
+<Project>
+  <!-- 
+    Custom Asset Pipeline Target
+    Generates asset manifest JSON files for modules and themes
+    Manifest maps URLs to physical file paths for custom middleware serving
+  -->
+  
+  <Target Name="ModuloGenerateClientAssetManifest" AfterTargets="Build" 
+          Condition="'$(IsClientProject)'=='true' and '$(ServerDllName)'!=''">
+    
+    <PropertyGroup>
+      <!-- Determine the server DLL name from ServerDllName property -->
+      <_ServerDllBaseName>$(ServerDllName)</_ServerDllBaseName>
+      <_ManifestFileName>$(_ServerDllBaseName).assets.json</_ManifestFileName>
+      <_ManifestFullPath>$(OutputPath)$(_ManifestFileName)</_ManifestFullPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <!-- Collect all files from wwwroot if it exists -->
+      <_ClientAssetFiles Include="$(MSBuildProjectDirectory)\wwwroot\**\*.*" Condition="Exists('$(MSBuildProjectDirectory)\wwwroot')" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <!-- Generate JSON array entries for each asset file -->
+      <!-- Each entry maps a URL to the physical file path -->
+      <_ModuloClientAssetLines>@(_ClientAssetFiles->'{"url":"$(AssetUrlPrefix)/%(RecursiveDir)%(Filename)%(Extension)","file":"%(FullPath)"}', ',')</_ModuloClientAssetLines>
+      
+      <!-- Wrap in JSON array brackets -->
+      <_ManifestContent>[
+$(_ModuloClientAssetLines)
+]</_ManifestContent>
+    </PropertyGroup>
+
+    <!-- Write the manifest file to the output directory -->
+    <WriteLinesToFile File="$(_ManifestFullPath)" 
+                      Lines="$(_ManifestContent)" 
+                      Overwrite="true" 
+                      Condition="'@(_ClientAssetFiles)'!=''" />
+    
+    <Message Text="Generated asset manifest: $(_ManifestFullPath)" Importance="high" Condition="'@(_ClientAssetFiles)'!=''" />
+    
+    <!-- Mark the manifest for copying to referencing projects -->
+    <ItemGroup Condition="'@(_ClientAssetFiles)'!=''">
+      <None Include="$(_ManifestFullPath)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Target to copy asset manifests from referenced projects -->
+  <Target Name="ModuloCopyAssetManifests" AfterTargets="Build">
+    <ItemGroup>
+      <!-- Find all .assets.json files from referenced project outputs -->
+      <_ReferencedAssetManifests Include="@(ReferencePath->'%(RootDir)%(Directory)%(Filename).assets.json')" 
+                                  Condition="Exists('%(RootDir)%(Directory)%(Filename).assets.json')" />
+    </ItemGroup>
+    
+    <!-- Copy manifests to current project's output directory -->
+    <Copy SourceFiles="@(_ReferencedAssetManifests)" 
+          DestinationFolder="$(OutputPath)" 
+          SkipUnchangedFiles="true"
+          Condition="'@(_ReferencedAssetManifests)'!=''" />
+    
+    <Message Text="Copied asset manifest: %(_ReferencedAssetManifests.Filename)%(_ReferencedAssetManifests.Extension)" 
+             Importance="high" 
+             Condition="'@(_ReferencedAssetManifests)'!=''" />
+  </Target>
+
+</Project>
