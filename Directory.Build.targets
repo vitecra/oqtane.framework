@@ -83,8 +83,8 @@ $(_ModuloClientAssetLines)
       <!-- Find Server DLL in current output -->
       <_ServerDllToDeploy Include="$(OutputPath)$(AssemblyName).dll" />
       <!-- Find Client DLL in current output (copied from referenced Client project) -->
-      <_ClientDllToDeploy Include="$(OutputPath)$(AssemblyName.Replace('.Server', '.Client')).dll" Condition="'$(IsModuleServerProject)'=='true'" />
-      <_ClientDllToDeploy Include="$(OutputPath)$(AssemblyName.Replace('.Server', '.Client')).dll" Condition="'$(IsThemeServerProject)'=='true'" />
+      <_ClientDllToDeploy Include="$(OutputPath)$(AssemblyName.Replace('.Server', '.Client')).dll" 
+                          Condition="'$(IsModuleServerProject)'=='true' or '$(IsThemeServerProject)'=='true'" />
       <!-- Find manifest files in Client project output -->
       <_ManifestToDeploy Include="$(_ClientOutputPath)*.assets.json" />
     </ItemGroup>
