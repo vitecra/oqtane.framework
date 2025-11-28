@@ -5,17 +5,17 @@ This guide helps you quickly get started with the custom asset pipeline for Oqta
 ## TL;DR
 
 ```bash
-# 1. Build your module/theme
+# 1. Build your module/theme Server project
 dotnet build YourModule/Server/YourModule.Server.csproj
 
-# 2. Deploy to Oqtane
-./deploy-custom-assets.sh  # or .ps1 on Windows
+# 2. Assets automatically deployed to Oqtane.Server/bin
+#    (no manual deployment needed!)
 
 # 3. Restart Oqtane.Server
 dotnet run --project Oqtane.Server
 
-# 4. Access assets
-http://localhost:5000/modules/YourModule/style.css
+# 4. Access assets (with version query strings)
+http://localhost:5000/modules/YourModule/style.css?v=HASH
 ```
 
 ## Create a New Module with Assets
@@ -53,6 +53,7 @@ mkdir -p MyModule/Server
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>MyModule.Server</AssemblyName>
+    <IsModuleServerProject>true</IsModuleServerProject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -108,9 +109,29 @@ dotnet build MyModule/Server/MyModule.Server.csproj
 Expected output:
 ```
 Generated asset manifest: bin/Debug/net10.0/MyModule.Server.assets.json
+Deployed module/theme to Oqtane.Server: MyModule.Server
 ```
 
-### 7. Verify Manifest
+The build automatically:
+- Generates the manifest in Client/bin
+- Copies Server DLL to Oqtane.Server/bin
+- Copies Client DLL to Oqtane.Server/bin
+- Copies manifest to Oqtane.Server/bin
+
+### 7. Verify Deployment
+
+```bash
+ls Oqtane.Server/bin/Debug/net10.0/ | grep MyModule
+```
+
+Should show:
+```
+MyModule.Client.dll
+MyModule.Server.dll
+MyModule.Server.assets.json
+```
+
+### 8. Verify Manifest
 
 ```bash
 cat MyModule/Client/bin/Debug/net10.0/MyModule.Server.assets.json
@@ -176,7 +197,25 @@ namespace Oqtane.Themes.MyTheme
 }
 ```
 
-### 4. Add CSS
+### 4. Create Server Project
+
+**Oqtane.Themes.MyTheme/Server/Oqtane.Themes.MyTheme.Server.csproj**:
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Oqtane.Themes.MyTheme</AssemblyName>
+    <IsThemeServerProject>true</IsThemeServerProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Oqtane.Shared\Oqtane.Shared.csproj" />
+    <ProjectReference Include="..\Client\Oqtane.Themes.MyTheme.Client.csproj" />
+  </ItemGroup>
+</Project>
+```
+
+### 5. Add CSS
 
 **Oqtane.Themes.MyTheme/Client/wwwroot/Theme.css**:
 ```css
@@ -185,12 +224,19 @@ body {
 }
 ```
 
-### 5. Build and Deploy
+### 6. Build (Auto-Deploys)
 
 ```bash
 dotnet build Oqtane.Themes.MyTheme/Server/Oqtane.Themes.MyTheme.Server.csproj
-./deploy-custom-assets.sh
 ```
+
+Expected output:
+```
+Generated asset manifest: bin/Debug/net10.0/Oqtane.Themes.MyTheme.assets.json
+Deployed module/theme to Oqtane.Server: Oqtane.Themes.MyTheme
+```
+
+Files are automatically deployed to Oqtane.Server/bin - no manual deployment needed!
 
 ## Common Tasks
 
@@ -253,9 +299,21 @@ Assets will now be available at: `/custom/path/file.css`
 **Problem**: Assets return 404
 
 **Solution**:
-1. Verify manifest is in Oqtane.Server bin directory
-2. Run deployment script: `./deploy-custom-assets.sh`
-3. Restart Oqtane.Server
+1. Verify files deployed to Oqtane.Server/bin:
+   ```bash
+   ls Oqtane.Server/bin/Debug/net10.0/ | grep YourModule
+   ```
+2. Rebuild the module/theme Server project to auto-deploy:
+   ```bash
+   dotnet build YourModule/Server/YourModule.Server.csproj
+   ```
+3. Verify manifest exists and contains correct paths:
+   ```bash
+   cat Oqtane.Server/bin/Debug/net10.0/YourModule.Server.assets.json
+   ```
+4. Restart Oqtane.Server
+
+**Note**: Query strings (like `?v=HASH`) are automatically handled by the middleware.
 
 ---
 
