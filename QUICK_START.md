@@ -147,11 +147,12 @@ Should show:
 
 ## Create a New Theme with Assets
 
+**Note**: Themes are Client-only projects (no Server project needed).
+
 ### 1. Create Project Structure
 
 ```bash
 mkdir -p Oqtane.Themes.MyTheme/Client/wwwroot
-mkdir -p Oqtane.Themes.MyTheme/Server
 ```
 
 ### 2. Create Client Project
@@ -162,6 +163,7 @@ mkdir -p Oqtane.Themes.MyTheme/Server
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsClientProject>true</IsClientProject>
+    <IsThemeClientProject>true</IsThemeClientProject>
     <ServerDllName>Oqtane.Themes.MyTheme</ServerDllName>
     <AssetUrlPrefix>/themes/Oqtane.Themes.MyTheme</AssetUrlPrefix>
   </PropertyGroup>
@@ -197,25 +199,7 @@ namespace Oqtane.Themes.MyTheme
 }
 ```
 
-### 4. Create Server Project
-
-**Oqtane.Themes.MyTheme/Server/Oqtane.Themes.MyTheme.Server.csproj**:
-```xml
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>Oqtane.Themes.MyTheme</AssemblyName>
-    <IsThemeServerProject>true</IsThemeServerProject>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Oqtane.Shared\Oqtane.Shared.csproj" />
-    <ProjectReference Include="..\Client\Oqtane.Themes.MyTheme.Client.csproj" />
-  </ItemGroup>
-</Project>
-```
-
-### 5. Add CSS
+### 4. Add CSS
 
 **Oqtane.Themes.MyTheme/Client/wwwroot/Theme.css**:
 ```css
@@ -224,19 +208,23 @@ body {
 }
 ```
 
-### 6. Build (Auto-Deploys)
+### 5. Build (Auto-Deploys)
 
 ```bash
-dotnet build Oqtane.Themes.MyTheme/Server/Oqtane.Themes.MyTheme.Server.csproj
+dotnet build Oqtane.Themes.MyTheme/Client/Oqtane.Themes.MyTheme.Client.csproj
 ```
 
 Expected output:
 ```
 Generated asset manifest: bin/Debug/net10.0/Oqtane.Themes.MyTheme.assets.json
-Deployed module/theme to Oqtane.Server: Oqtane.Themes.MyTheme
+Deployed theme to Oqtane.Server: Oqtane.Themes.MyTheme.Client
 ```
 
-Files are automatically deployed to Oqtane.Server/bin - no manual deployment needed!
+Files are automatically deployed to Oqtane.Server/bin:
+- Oqtane.Themes.MyTheme.Client.dll
+- Oqtane.Themes.MyTheme.assets.json
+
+No manual deployment needed!
 
 ## Common Tasks
 
