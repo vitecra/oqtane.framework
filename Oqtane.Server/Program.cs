@@ -30,6 +30,46 @@ namespace Oqtane.Server
 
             var app = builder.Build();
 
+            // Linux containers have case-sensitive paths. Some clients request these
+            // Oqtane asset folders in lowercase, which would otherwise 404.
+            app.Use((context, next) =>
+            {
+                var path = context.Request.Path.Value;
+                if (!string.IsNullOrEmpty(path))
+                {
+                    if (path.StartsWith("/themes/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Request.Path = new Microsoft.AspNetCore.Http.PathString("/Themes/" + path.Substring("/themes/".Length));
+                    }
+                    else if (path.Equals("/themes", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Request.Path = new Microsoft.AspNetCore.Http.PathString("/Themes");
+                    }
+                    else if (path.StartsWith("/modules/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Request.Path = new Microsoft.AspNetCore.Http.PathString("/Modules/" + path.Substring("/modules/".Length));
+                    }
+                    else if (path.Equals("/modules", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Request.Path = new Microsoft.AspNetCore.Http.PathString("/Modules");
+                    }
+                    else if (path.StartsWith("/files/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Request.Path = new Microsoft.AspNetCore.Http.PathString("/Files/" + path.Substring("/files/".Length));
+                    }
+                    else if (path.Equals("/files", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Request.Path = new Microsoft.AspNetCore.Http.PathString("/Files");
+                    }
+                }
+
+                return next();
+            });
+
+            // Required for .NET static web assets endpoint mapping (fixes 404s for module/theme assets
+            // and removes the WebAssemblyComponentsEndpointOptions warning in .NET 10).
+            app.MapStaticAssets();
+
             var corsService = app.Services.GetRequiredService<ICorsService>();
             var corsPolicyProvider = app.Services.GetRequiredService<ICorsPolicyProvider>();
             var syncManager = app.Services.GetRequiredService<ISyncManager>();

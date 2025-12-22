@@ -44,7 +44,15 @@ namespace Microsoft.Extensions.DependencyInjection
             // process forwarded headers on load balancers and proxy servers
             services.Configure<ForwardedHeadersOptions>(options =>
             {
-                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+
+                // In Kubernetes, reverse proxies (Traefik) are not on loopback.
+                // The ForwardedHeaders middleware defaults to trusting only loopback proxies,
+                // so we clear the defaults to accept forwarded headers from the cluster.
+                // If you want to harden this further, replace with explicit KnownNetworks/KnownProxies.
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
+                options.ForwardLimit = null;
             });
 
             // register localization services
@@ -78,7 +86,10 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddAntiforgery(options =>
             {
                 options.HeaderName = Constants.AntiForgeryTokenHeaderName;
-                options.Cookie.Name = Constants.AntiForgeryTokenCookieName;
+                var antiforgeryCookieName = configuration["AntiForgery:CookieName"];
+                options.Cookie.Name = string.IsNullOrWhiteSpace(antiforgeryCookieName)
+                    ? Constants.AntiForgeryTokenCookieName
+                    : antiforgeryCookieName;
                 options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                 options.Cookie.HttpOnly = true;
@@ -377,6 +388,12 @@ namespace Microsoft.Extensions.DependencyInjection
 
         public static IServiceCollection AddHttpClients(this IServiceCollection services)
         {
+            static bool IsRunningInKubernetes()
+            {
+                // K8s always injects this env var into pods.
+                return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST"));
+            }
+
             if (!services.Any(x => x.ServiceType == typeof(HttpClient)))
             {
                 services.AddScoped(provider =>
@@ -385,11 +402,31 @@ namespace Microsoft.Extensions.DependencyInjection
                     var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
                     if (httpContextAccessor.HttpContext != null)
                     {
-                        client.BaseAddress = new Uri(httpContextAccessor.HttpContext.Request.Scheme + "://" + httpContextAccessor.HttpContext.Request.Host);
-                        // set the cookies to allow HttpClient API calls to be authenticated
-                        foreach (var cookie in httpContextAccessor.HttpContext.Request.Cookies)
+                        var request = httpContextAccessor.HttpContext.Request;
+
+                        // In Kubernetes, the pod often cannot resolve the public hostname via DNS.
+                        // Use loopback to call ourselves, but keep the original Host header so tenant/alias resolution still works.
+                        if (IsRunningInKubernetes())
                         {
-                            client.DefaultRequestHeaders.Add("Cookie", cookie.Key + "=" + WebUtility.UrlEncode(cookie.Value));
+                            client.BaseAddress = new Uri("http://127.0.0.1");
+                            if (!string.IsNullOrEmpty(request.Host.Value))
+                            {
+                                client.DefaultRequestHeaders.Host = request.Host.Value;
+                            }
+                        }
+                        else
+                        {
+                            client.BaseAddress = new Uri(request.Scheme + "://" + request.Host);
+                        }
+
+                        // set the cookies to allow HttpClient API calls to be authenticated
+                        // NOTE: Cookie must be a single header; adding one header per cookie can cause downstream parsing issues.
+                        var cookies = httpContextAccessor.HttpContext.Request.Cookies;
+                        if (cookies != null && cookies.Count > 0)
+                        {
+                            var cookieHeader = string.Join("; ", cookies.Select(cookie => $"{cookie.Key}={cookie.Value}"));
+                            client.DefaultRequestHeaders.Remove("Cookie");
+                            client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookieHeader);
                         }
                     }
 
@@ -403,11 +440,29 @@ namespace Microsoft.Extensions.DependencyInjection
                 var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
                 if (httpContextAccessor.HttpContext != null)
                 {
-                    client.BaseAddress = new Uri(httpContextAccessor.HttpContext.Request.Scheme + "://" + httpContextAccessor.HttpContext.Request.Host);
-                    // set the cookies to allow HttpClient API calls to be authenticated
-                    foreach (var cookie in httpContextAccessor.HttpContext.Request.Cookies)
+                    var request = httpContextAccessor.HttpContext.Request;
+
+                    if (IsRunningInKubernetes())
                     {
-                        client.DefaultRequestHeaders.Add("Cookie", cookie.Key + "=" + WebUtility.UrlEncode(cookie.Value));
+                        client.BaseAddress = new Uri("http://127.0.0.1");
+                        if (!string.IsNullOrEmpty(request.Host.Value))
+                        {
+                            client.DefaultRequestHeaders.Host = request.Host.Value;
+                        }
+                    }
+                    else
+                    {
+                        client.BaseAddress = new Uri(request.Scheme + "://" + request.Host);
+                    }
+
+                    // set the cookies to allow HttpClient API calls to be authenticated
+                    // NOTE: Cookie must be a single header; adding one header per cookie can cause downstream parsing issues.
+                    var cookies = httpContextAccessor.HttpContext.Request.Cookies;
+                    if (cookies != null && cookies.Count > 0)
+                    {
+                        var cookieHeader = string.Join("; ", cookies.Select(cookie => $"{cookie.Key}={cookie.Value}"));
+                        client.DefaultRequestHeaders.Remove("Cookie");
+                        client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookieHeader);
                     }
                 }
             });

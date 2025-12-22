@@ -42,7 +42,6 @@ namespace Oqtane.Extensions
             // allow oqtane localization middleware
             app.UseOqtaneLocalization();
 
-            app.UseHttpsRedirection();
             app.UseStaticFiles(new StaticFileOptions
             {
                 OnPrepareResponse = (ctx) =>
