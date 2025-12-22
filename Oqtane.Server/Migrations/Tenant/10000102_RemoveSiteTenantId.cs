@@ -7,20 +7,20 @@ using Oqtane.Repository;
 namespace Oqtane.Migrations.Tenant
 {
     [DbContext(typeof(TenantDBContext))]
-    [Migration("Tenant.06.00.01.01")]
-    public class AddLanguageName : MultiDatabaseMigration
+    [Migration("Tenant.10.00.01.02")]
+    public class RemoveSiteTenantId : MultiDatabaseMigration
     {
-        public AddLanguageName(IDatabase database) : base(database)
+        public RemoveSiteTenantId(IDatabase database) : base(database)
         {
         }
 
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Name column was removed in 5.2.4 however SQLite did not support column removal so it had to be restored
+            var siteEntityBuilder = new SiteEntityBuilder(migrationBuilder, ActiveDatabase);
+            siteEntityBuilder.DropIndex("IX_Site"); // TenantId, Name
             if (ActiveDatabase.Name != "Sqlite")
             {
-                var languageEntityBuilder = new LanguageEntityBuilder(migrationBuilder, ActiveDatabase);
-                languageEntityBuilder.AddStringColumn("Name", 100, true);
+                siteEntityBuilder.DropColumn("TenantId");
             }
         }
 

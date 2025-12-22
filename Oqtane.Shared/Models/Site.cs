@@ -17,11 +17,6 @@ namespace Oqtane.Models
         public int SiteId { get; set; }
 
         /// <summary>
-        /// Reference to the <see cref="Tenant"/> the Site is in
-        /// </summary>
-        public int TenantId { get; set; }
-
-        /// <summary>
         /// The site Name
         /// </summary>
         public string Name { get; set; }
@@ -198,17 +193,28 @@ namespace Oqtane.Models
         public List<Theme> Themes { get; set; }
 
         /// <summary>
+        /// Current user
+        /// </summary>
+        [NotMapped]
+        public User User { get; set; }
+
+        /// <summary>
         /// fingerprint for framework static assets
         /// </summary>
         [NotMapped]
         public string Fingerprint { get; set; }
+
+        /// <summary>
+        /// Reference to the <see cref="Tenant"/> the Site belongs to
+        /// </summary>
+        [NotMapped]
+        public int TenantId { get; set; }
 
         public Site Clone()
         {
             return new Site
             {
                 SiteId = SiteId,
-                TenantId = TenantId,
                 Name = Name,
                 TimeZoneId = TimeZoneId,
                 LogoFileId = LogoFileId,
@@ -246,7 +252,9 @@ namespace Oqtane.Models
                 Pages = Pages.ConvertAll(page => page.Clone()),
                 Languages = Languages.ConvertAll(language => language.Clone()),
                 Themes = Themes,
-                Fingerprint = Fingerprint
+                User = User?.Clone(),
+                Fingerprint = Fingerprint,
+                TenantId = TenantId
             };
         }
 

@@ -7,20 +7,17 @@ using Oqtane.Repository;
 namespace Oqtane.Migrations.Tenant
 {
     [DbContext(typeof(TenantDBContext))]
-    [Migration("Tenant.05.02.04.01")]
-    public class RemoveLanguageName : MultiDatabaseMigration
+    [Migration("Tenant.10.00.02.02")]
+    public class ExpandPageName : MultiDatabaseMigration
     {
-        public RemoveLanguageName(IDatabase database) : base(database)
+        public ExpandPageName(IDatabase database) : base(database)
         {
         }
 
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            if (ActiveDatabase.Name != "Sqlite")
-            {
-                var languageEntityBuilder = new LanguageEntityBuilder(migrationBuilder, ActiveDatabase);
-                languageEntityBuilder.DropColumn("Name");
-            }
+            var pageEntityBuilder = new PageEntityBuilder(migrationBuilder, ActiveDatabase);
+            pageEntityBuilder.AlterStringColumn("Name", 100);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
