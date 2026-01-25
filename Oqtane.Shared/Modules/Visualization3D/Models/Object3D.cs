@@ -24,7 +24,7 @@ namespace Oqtane.Modules.Visualization3D.Models
             Visible = true;
         }
 
-        public abstract string GetType();
+        public abstract string GetObjectType();
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ namespace Oqtane.Modules.Visualization3D.Models
             Size = size;
         }
 
-        public override string GetType() => "Cube";
+        public override string GetObjectType() => "Cube";
     }
 
     /// <summary>
@@ -60,7 +60,7 @@ namespace Oqtane.Modules.Visualization3D.Models
             Segments = segments;
         }
 
-        public override string GetType() => "Sphere";
+        public override string GetObjectType() => "Sphere";
     }
 
     /// <summary>
@@ -79,6 +79,6 @@ namespace Oqtane.Modules.Visualization3D.Models
             Height = height;
         }
 
-        public override string GetType() => "Plane";
+        public override string GetObjectType() => "Plane";
     }
 }

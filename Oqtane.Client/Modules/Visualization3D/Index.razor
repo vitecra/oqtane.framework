@@ -1,7 +1,7 @@
 @using Oqtane.Modules.Visualization3D.Models
 @namespace Oqtane.Modules.Visualization3D
 @inherits ModuleBase
-@inject IJSRuntime JSRuntime
+@implements IDisposable
 
 <div class="container-fluid">
     <div class="row mb-3">
@@ -184,10 +184,9 @@
         _timer = null;
     }
 
-    public override void Dispose()
+    public void Dispose()
     {
         StopAnimation();
         JSRuntime.InvokeVoidAsync("Visualization3D.dispose", _canvasId);
-        base.Dispose();
     }
 }
