@@ -49,7 +49,7 @@ namespace Oqtane.Modules.Visualization3D.Models
         public Vector3 Normalize()
         {
             double mag = Magnitude();
-            if (mag == 0) return Zero;
+            if (mag < double.Epsilon) return Zero;
             return new Vector3(X / mag, Y / mag, Z / mag);
         }
 

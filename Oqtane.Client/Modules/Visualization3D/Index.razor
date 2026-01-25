@@ -40,6 +40,8 @@
     private bool _isAnimating = false;
     private System.Threading.Timer _timer;
     private double _rotation = 0;
+    private Random _random = new Random();
+    private bool _isRendering = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -114,10 +116,9 @@
 
     private async Task AddCube()
     {
-        var random = new Random();
         var cube = new Cube(1.0);
-        cube.Position = new Vector3(random.Next(-3, 4), random.Next(-2, 3), 0);
-        cube.Color = new Color(random.Next(0, 256), random.Next(0, 256), random.Next(0, 256));
+        cube.Position = new Vector3(_random.Next(-3, 4), _random.Next(-2, 3), 0);
+        cube.Color = new Color(_random.Next(0, 256), _random.Next(0, 256), _random.Next(0, 256));
         _scene.Add(cube);
         await RenderScene();
         StateHasChanged();
@@ -125,10 +126,9 @@
 
     private async Task AddSphere()
     {
-        var random = new Random();
         var sphere = new Sphere(0.8);
-        sphere.Position = new Vector3(random.Next(-3, 4), random.Next(-2, 3), 0);
-        sphere.Color = new Color(random.Next(0, 256), random.Next(0, 256), random.Next(0, 256));
+        sphere.Position = new Vector3(_random.Next(-3, 4), _random.Next(-2, 3), 0);
+        sphere.Color = new Color(_random.Next(0, 256), _random.Next(0, 256), _random.Next(0, 256));
         _scene.Add(sphere);
         await RenderScene();
         StateHasChanged();
@@ -136,10 +136,9 @@
 
     private async Task AddPlane()
     {
-        var random = new Random();
         var plane = new Plane(1.5, 1.5);
-        plane.Position = new Vector3(random.Next(-3, 4), random.Next(-2, 3), 0);
-        plane.Color = new Color(random.Next(0, 256), random.Next(0, 256), random.Next(0, 256));
+        plane.Position = new Vector3(_random.Next(-3, 4), _random.Next(-2, 3), 0);
+        plane.Color = new Color(_random.Next(0, 256), _random.Next(0, 256), _random.Next(0, 256));
         _scene.Add(plane);
         await RenderScene();
         StateHasChanged();
@@ -170,10 +169,20 @@
         _isAnimating = true;
         _timer = new System.Threading.Timer(async _ =>
         {
-            _rotation += 0.02;
-            await JSRuntime.InvokeVoidAsync("Visualization3D.updateRotation", _canvasId, 0.02);
-            await RenderScene();
-            await InvokeAsync(StateHasChanged);
+            if (_isRendering) return; // Skip if previous render still in progress
+            
+            _isRendering = true;
+            try
+            {
+                _rotation += 0.02;
+                await JSRuntime.InvokeVoidAsync("Visualization3D.updateRotation", _canvasId, 0.02);
+                await RenderScene();
+                await InvokeAsync(StateHasChanged);
+            }
+            finally
+            {
+                _isRendering = false;
+            }
         }, null, 0, 50);
     }
 
@@ -187,6 +196,13 @@
     public void Dispose()
     {
         StopAnimation();
-        JSRuntime.InvokeVoidAsync("Visualization3D.dispose", _canvasId);
+        try
+        {
+            JSRuntime.InvokeVoidAsync("Visualization3D.dispose", _canvasId);
+        }
+        catch
+        {
+            // Ignore disposal errors as component may already be disposed
+        }
     }
 }
