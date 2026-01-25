@@ -1,0 +1,193 @@
+@using Oqtane.Modules.Visualization3D.Models
+@namespace Oqtane.Modules.Visualization3D
+@inherits ModuleBase
+@inject IJSRuntime JSRuntime
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h3>3D Visualization Demo</h3>
+            <p>This module demonstrates a C# wrapper for 3D visualization.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <canvas id="@_canvasId" style="border: 1px solid #ccc; width: 100%; max-width: 800px; height: 600px;"></canvas>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Controls</h5>
+                    <button class="btn btn-primary mb-2 w-100" @onclick="AddCube">Add Cube</button>
+                    <button class="btn btn-success mb-2 w-100" @onclick="AddSphere">Add Sphere</button>
+                    <button class="btn btn-info mb-2 w-100" @onclick="AddPlane">Add Plane</button>
+                    <button class="btn btn-warning mb-2 w-100" @onclick="ToggleAnimation">@(_isAnimating ? "Stop" : "Start") Animation</button>
+                    <button class="btn btn-danger mb-2 w-100" @onclick="ClearScene">Clear Scene</button>
+                    
+                    <hr />
+                    
+                    <p><strong>Objects in scene:</strong> @_scene.Objects.Count</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _canvasId = "canvas3d";
+    private Scene _scene;
+    private bool _isAnimating = false;
+    private System.Threading.Timer _timer;
+    private double _rotation = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _scene = new Scene();
+            _scene.BackgroundColor = new Color(240, 240, 240);
+
+            // Initialize canvas
+            await JSRuntime.InvokeVoidAsync("Visualization3D.initialize", _canvasId, 800, 600, _scene.BackgroundColor.ToRgba());
+
+            // Add some default objects
+            var cube = new Cube(1.5);
+            cube.Position = new Vector3(-2, 0, 0);
+            cube.Color = Color.Blue;
+            _scene.Add(cube);
+
+            var sphere = new Sphere(1.0);
+            sphere.Position = new Vector3(2, 0, 0);
+            sphere.Color = Color.Red;
+            _scene.Add(sphere);
+
+            var plane = new Plane(2, 2);
+            plane.Position = new Vector3(0, -2, 0);
+            plane.Color = Color.Green;
+            _scene.Add(plane);
+
+            await RenderScene();
+            StartAnimation();
+        }
+    }
+
+    private async Task RenderScene()
+    {
+        await JSRuntime.InvokeVoidAsync("Visualization3D.clear", _canvasId, _scene.BackgroundColor.ToRgba());
+
+        foreach (var obj in _scene.Objects)
+        {
+            if (!obj.Visible) continue;
+
+            switch (obj)
+            {
+                case Cube cube:
+                    await JSRuntime.InvokeVoidAsync("Visualization3D.drawCube", 
+                        _canvasId, 
+                        cube.Position, 
+                        cube.Scale, 
+                        cube.Rotation, 
+                        cube.Color.ToRgba());
+                    break;
+
+                case Sphere sphere:
+                    await JSRuntime.InvokeVoidAsync("Visualization3D.drawSphere", 
+                        _canvasId, 
+                        sphere.Position, 
+                        sphere.Radius, 
+                        sphere.Color.ToRgba());
+                    break;
+
+                case Plane plane:
+                    await JSRuntime.InvokeVoidAsync("Visualization3D.drawPlane", 
+                        _canvasId, 
+                        plane.Position, 
+                        plane.Width, 
+                        plane.Height, 
+                        plane.Rotation, 
+                        plane.Color.ToRgba());
+                    break;
+            }
+        }
+    }
+
+    private async Task AddCube()
+    {
+        var random = new Random();
+        var cube = new Cube(1.0);
+        cube.Position = new Vector3(random.Next(-3, 4), random.Next(-2, 3), 0);
+        cube.Color = new Color(random.Next(0, 256), random.Next(0, 256), random.Next(0, 256));
+        _scene.Add(cube);
+        await RenderScene();
+        StateHasChanged();
+    }
+
+    private async Task AddSphere()
+    {
+        var random = new Random();
+        var sphere = new Sphere(0.8);
+        sphere.Position = new Vector3(random.Next(-3, 4), random.Next(-2, 3), 0);
+        sphere.Color = new Color(random.Next(0, 256), random.Next(0, 256), random.Next(0, 256));
+        _scene.Add(sphere);
+        await RenderScene();
+        StateHasChanged();
+    }
+
+    private async Task AddPlane()
+    {
+        var random = new Random();
+        var plane = new Plane(1.5, 1.5);
+        plane.Position = new Vector3(random.Next(-3, 4), random.Next(-2, 3), 0);
+        plane.Color = new Color(random.Next(0, 256), random.Next(0, 256), random.Next(0, 256));
+        _scene.Add(plane);
+        await RenderScene();
+        StateHasChanged();
+    }
+
+    private async Task ClearScene()
+    {
+        _scene.Clear();
+        await RenderScene();
+        StateHasChanged();
+    }
+
+    private void ToggleAnimation()
+    {
+        _isAnimating = !_isAnimating;
+        if (_isAnimating)
+        {
+            StartAnimation();
+        }
+        else
+        {
+            StopAnimation();
+        }
+    }
+
+    private void StartAnimation()
+    {
+        _isAnimating = true;
+        _timer = new System.Threading.Timer(async _ =>
+        {
+            _rotation += 0.02;
+            await JSRuntime.InvokeVoidAsync("Visualization3D.updateRotation", _canvasId, 0.02);
+            await RenderScene();
+            await InvokeAsync(StateHasChanged);
+        }, null, 0, 50);
+    }
+
+    private void StopAnimation()
+    {
+        _isAnimating = false;
+        _timer?.Dispose();
+        _timer = null;
+    }
+
+    public override void Dispose()
+    {
+        StopAnimation();
+        JSRuntime.InvokeVoidAsync("Visualization3D.dispose", _canvasId);
+        base.Dispose();
+    }
+}
