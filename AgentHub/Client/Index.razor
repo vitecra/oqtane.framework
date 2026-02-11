@@ -1,0 +1,22 @@
+@using Oqtane.Models
+@using Oqtane.Shared
+@inherits Oqtane.Modules.ModuleBase
+
+<div class="agenthub-container">
+    <h2>AgentHub Module</h2>
+    <p>This is a demonstration module for the custom asset pipeline.</p>
+    <p>Assets are loaded from:</p>
+    <ul>
+        <li>CSS: /modules/AgentHub/module.css</li>
+        <li>JS: /modules/AgentHub/agenthub.js</li>
+    </ul>
+    <button class="btn btn-primary" onclick="testAgentHub()">Test JavaScript</button>
+</div>
+
+@code {
+    public override List<Resource> Resources => new List<Resource>()
+    {
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = "/modules/AgentHub/module.css" },
+        new Resource { ResourceType = ResourceType.Script, Url = "/modules/AgentHub/agenthub.js" }
+    };
+}
