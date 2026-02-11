@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+using ModuleModel = Oqtane.Models.Module;
 using Oqtane.Databases.Interfaces;
 using Oqtane.Extensions;
 using Oqtane.Infrastructure;
@@ -61,10 +63,110 @@ namespace Oqtane.Repository
                 }
             }
 
-            if (!string.IsNullOrEmpty(_databaseType))
+            // Resolve database provider type from tenant DBType with fallback to default config
             {
-                var type = Type.GetType(_databaseType);
-                ActiveDatabase = Activator.CreateInstance(type) as IDatabase;
+                var typeName = _databaseType?.Trim();
+                Type type = null;
+                if (!string.IsNullOrEmpty(typeName))
+                {
+                    type = Type.GetType(typeName);
+                    if (type == null)
+                    {
+                        var fullName = typeName.Split(',')[0].Trim();
+                        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            type = asm.GetType(fullName);
+                            if (type != null) break;
+                        }
+                        if (type == null)
+                        {
+                            try
+                            {
+                                var serverAsm = Assembly.Load("Oqtane.Server");
+                                type = serverAsm.GetType(fullName);
+                            }
+                            catch { /* ignore */ }
+                        }
+                    }
+                }
+                if (type == null)
+                {
+                    var fallback = _config.GetSection(SettingKeys.DatabaseSection)[SettingKeys.DatabaseTypeKey]?.Trim();
+                    if (!string.IsNullOrEmpty(fallback))
+                    {
+                        type = Type.GetType(fallback);
+                        if (type == null)
+                        {
+                            var fullName = fallback.Split(',')[0].Trim();
+                            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                type = asm.GetType(fullName);
+                                if (type != null) break;
+                            }
+                            if (type == null)
+                            {
+                                try
+                                {
+                                    var serverAsm = Assembly.Load("Oqtane.Server");
+                                    type = serverAsm.GetType(fullName);
+                                }
+                                catch { /* ignore */ }
+                            }
+                        }
+                    }
+                    // Final fallback to default constant if config missing
+                    if (type == null && !string.IsNullOrEmpty(Constants.DefaultDBType))
+                    {
+                        var def = Constants.DefaultDBType.Trim();
+                        type = Type.GetType(def);
+                        if (type == null)
+                        {
+                            var fullName = def.Split(',')[0].Trim();
+                            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                type = asm.GetType(fullName);
+                                if (type != null) break;
+                            }
+                            if (type == null)
+                            {
+                                try
+                                {
+                                    var serverAsm = Assembly.Load("Oqtane.Server");
+                                    type = serverAsm.GetType(fullName);
+                                }
+                                catch { /* ignore */ }
+                            }
+                        }
+                    }
+                    // Absolute final fallback for PostgreSQL when connection indicates Postgres
+                    if (type == null && !string.IsNullOrEmpty(_connectionString) && _connectionString.Contains("Port=") && _connectionString.Contains("Server="))
+                    {
+                        var pg = "Oqtane.Database.PostgreSQL.PostgreSQLDatabase, Oqtane.Server";
+                        type = Type.GetType(pg);
+                        if (type == null)
+                        {
+                            var fullName = pg.Split(',')[0].Trim();
+                            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                type = asm.GetType(fullName);
+                                if (type != null) break;
+                            }
+                            if (type == null)
+                            {
+                                try
+                                {
+                                    var serverAsm = Assembly.Load("Oqtane.Server");
+                                    type = serverAsm.GetType(fullName);
+                                }
+                                catch { /* ignore */ }
+                            }
+                        }
+                    }
+                }
+                if (type != null)
+                {
+                    ActiveDatabase = Activator.CreateInstance(type) as IDatabase;
+                }
             }
 
             // specify the SchemaVersion for .NET Identity as it is not being persisted when using AddIdentityCore()
@@ -115,7 +217,7 @@ namespace Oqtane.Repository
         public virtual DbSet<Site> Site { get; set; }
         public virtual DbSet<Page> Page { get; set; }
         public virtual DbSet<PageModule> PageModule { get; set; }
-        public virtual DbSet<Module> Module { get; set; }
+        public virtual DbSet<ModuleModel> Module { get; set; }
         public virtual DbSet<User> User { get; set; }
         public virtual DbSet<Profile> Profile { get; set; }
         public virtual DbSet<Role> Role { get; set; }

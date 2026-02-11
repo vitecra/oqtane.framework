@@ -59,8 +59,43 @@ namespace Oqtane.Repository
 
             if (!string.IsNullOrEmpty(_databaseType))
             {
-                var type = Type.GetType(_databaseType);
-                ActiveDatabase = Activator.CreateInstance(type) as IDatabase;
+                var typeName = _databaseType?.Trim();
+                Type type = null;
+                if (!string.IsNullOrEmpty(typeName))
+                {
+                    type = Type.GetType(typeName);
+                    if (type == null)
+                    {
+                        var fullName = typeName.Split(',')[0].Trim();
+                        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            type = asm.GetType(fullName);
+                            if (type != null) break;
+                        }
+                    }
+                }
+                if (type == null)
+                {
+                    // fallback to default DBType from config
+                    var fallback = _config.GetSection(SettingKeys.DatabaseSection)[SettingKeys.DatabaseTypeKey]?.Trim();
+                    if (!string.IsNullOrEmpty(fallback))
+                    {
+                        type = Type.GetType(fallback);
+                        if (type == null)
+                        {
+                            var fullName = fallback.Split(',')[0].Trim();
+                            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                type = asm.GetType(fullName);
+                                if (type != null) break;
+                            }
+                        }
+                    }
+                }
+                if (type != null)
+                {
+                    ActiveDatabase = Activator.CreateInstance(type) as IDatabase;
+                }
             }
 
             if (!string.IsNullOrEmpty(_connectionString) && ActiveDatabase != null)

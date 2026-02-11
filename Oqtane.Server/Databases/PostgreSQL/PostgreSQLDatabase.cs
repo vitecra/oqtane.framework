@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using EFCore.NamingConventions.Internal;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations.Builders;
@@ -85,11 +86,13 @@ namespace Oqtane.Database.PostgreSQL
 
         public override string RewriteName(string name)
         {
+            if (string.IsNullOrEmpty(name)) return name;
             return _rewriter.RewriteName(name);
         }
 
         public override string DelimitName(string name)
         {
+            if (string.IsNullOrEmpty(name)) return name;
             return $"\"{name}\"";
         }
 
@@ -123,7 +126,12 @@ namespace Oqtane.Database.PostgreSQL
                         // replace column names
                         foreach (var property in entity.GetProperties())
                         {
-                            property.SetColumnName(RewriteName(property.Name));
+                            var storeObject = StoreObjectIdentifier.Table(entity.GetTableName(), entity.GetSchema());
+                            var current = property.GetColumnName(storeObject);
+                            if (!string.IsNullOrEmpty(current))
+                            {
+                                property.SetColumnName(RewriteName(property.Name));
+                            }
                         }
 
                         // replace key names
